@@ -4,21 +4,28 @@ import sys
 
 from config import load_settings
 from login import login
+from logger import setup_logger
+
+logger = setup_logger()
 
 
 def main() -> int:
     try:
+        logger.info("프로그램 시작")
+
         settings = load_settings()
+
+        logger.info("환경변수 로딩 완료")
 
         driver = login(settings)
 
-        print("로그인 시도 완료")
-        print("현재 URL:", driver.current_url)
+        logger.info("로그인 시도 완료")
+        logger.info(f"현재 URL: {driver.current_url}")
 
         return 0
 
     except Exception as exc:
-        print(f"오류 발생: {exc}")
+        logger.exception(f"오류 발생: {exc}")
         return 1
 
 
