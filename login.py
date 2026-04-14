@@ -64,48 +64,53 @@ def find_target_window(settings: Settings):
         f"대상 창 탐색 시작 (정규식: {settings.window_title_regex})"
     )
 
-    window = Desktop(backend="uia").window(
-        title_re=settings.window_title_regex
+    desktop = Desktop(backend="uia")
+
+    windows = desktop.windows(
+        title_re=settings.window_title_regex,
+        top_level_only=True
     )
 
-    window.wait("visible", timeout=20)
+    visible_windows = []
 
-    logger.info("대상 창 찾음")
-    logger.info(f"창 제목: {window.window_text()}")
+    for idx, win in enumerate(windows):
+        try:
+            title = win.window_text()
+            is_visible = win.is_visible()
+
+            logger.info(
+                f"[후보 창 {idx}] title={title!r}, visible={is_visible}"
+            )
+
+            if is_visible:
+                visible_windows.append(win)
+
+        except Exception as exc:
+            logger.warning(
+                f"[후보 창 {idx}] 조회 실패: {exc}"
+            )
+
+    if not visible_windows:
+        raise RuntimeError(
+            "제목에 '대리점'이 포함된 visible 창을 찾지 못했습니다."
+        )
+
+    # 마지막 visible 창 사용
+    window = visible_windows[-1]
+
+    logger.info(
+        f"선택된 창 제목: {window.window_text()!r}"
+    )
 
     window.set_focus()
+
+    time.sleep(0.5)
 
     logger.info("창 포커스 완료")
 
     return window
 
-
-def click_id_box(window, settings: Settings) -> None:
-    logger.info(
-        f"ID 입력창 클릭 시도 "
-        f"(x={settings.id_box_x}, y={settings.id_box_y})"
-    )
-
-    window.click_input(
-        coords=(settings.id_box_x, settings.id_box_y)
-    )
-
-    time.sleep(0.5)
-
-    logger.info("ID 입력창 클릭 완료")
-
-
 def input_credentials(settings: Settings) -> None:
-    logger.info("아이디 입력 시작")
-
-    send_keys("^a{BACKSPACE}")
-    send_keys(settings.user_id, with_spaces=True)
-
-    logger.info("아이디 입력 완료")
-
-    logger.info("비밀번호 입력창 이동")
-
-    send_keys("{TAB}")
 
     logger.info("비밀번호 입력 시작")
 
@@ -129,8 +134,6 @@ def login(settings: Settings) -> webdriver.Chrome:
     open_target_page(driver, settings)
 
     window = find_target_window(settings)
-
-    click_id_box(window, settings)
 
     input_credentials(settings)
 
